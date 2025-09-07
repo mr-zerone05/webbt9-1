@@ -1,20 +1,46 @@
-# Stage 1: Build WAR bằng Maven
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+# ---------- STAGE 1: build WAR ----------
+FROM maven:3.9.9-eclipse-temurin-17 AS build
 WORKDIR /app
+
+# copy sources (pom + src + webapp)
+COPY pom.xml .
+COPY src ./src
+# nếu có file khác (webapp in root), copy toàn bộ
 COPY . .
-RUN mvn clean package -DskipTests
 
-# Stage 2: Chạy với Tomcat
-FROM tomcat:10.1-jdk17
+# Build artifact (ROOT.war)
+RUN mvn -B clean package -DskipTests
 
-# Xóa webapp mặc định
-RUN rm -rf /usr/local/tomcat/webapps/*
+# ---------- STAGE 2: runtime Tomcat ----------
+FROM tomcat:11.0.10-jdk17-temurin AS runtime
+ENV CATALINA_HOME=/usr/local/tomcat
+WORKDIR $CATALINA_HOME
 
-# Copy WAR từ stage build vào Tomcat (ROOT.war)
-COPY --from=build /app/target/ROOT.war /usr/local/tomcat/webapps/ROOT.war
+# remove default webapps
+RUN rm -rf $CATALINA_HOME/webapps/*
+
+# copy WAR built from previous stage -> ROOT.war
+COPY --from=build /app/target/ROOT.war $CATALINA_HOME/webapps/ROOT.war
+
+# prepare server.xml.template (disable shutdown port and keep ${PORT})
+RUN sed -e 's/port="8005"/port="-1"/' $CATALINA_HOME/conf/server.xml \
+    | sed -e 's/port="8080"/port="${PORT}"/' > $CATALINA_HOME/conf/server.xml.template \
+    && rm -f $CATALINA_HOME/conf/server.xml
+
+# install envsubst and tidy tools for the entrypoint
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gettext-base procps curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# copy entrypoint
+COPY docker-entrypoint.sh $CATALINA_HOME/docker-entrypoint.sh
+RUN chmod +x $CATALINA_HOME/docker-entrypoint.sh
 
 EXPOSE 8080
-CMD ["catalina.sh", "run"]
+
+ENTRYPOINT ["./docker-entrypoint.sh"]
+
+
 
 
 
