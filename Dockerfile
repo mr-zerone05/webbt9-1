@@ -1,19 +1,17 @@
 # Bước 1: Build bằng Maven
-FROM maven:3.9.6-eclipse-temurin-17 AS build
+FROM maven:3.9.9-eclipse-temurin-17 AS build
 WORKDIR /app
 COPY . .
 RUN mvn clean package -DskipTests
 
-# Bước 2: Deploy lên Tomcat
+# Bước 2: Deploy WAR lên Tomcat 11
 FROM tomcat:11.0.10-jdk17-temurin
 WORKDIR /usr/local/tomcat
-RUN rm -rf webapps/*
-
-# Copy WAR và deploy dưới ROOT context
-COPY --from=build /app/target/ch09_ex1_download-1.0-SNAPSHOT.war ./webapps/ROOT.war
+COPY --from=build /app/target/ch09_ex1_download.war ./webapps/ch09_ex1_download.war
 
 EXPOSE 8080
 CMD ["catalina.sh", "run"]
+
 
 
 
