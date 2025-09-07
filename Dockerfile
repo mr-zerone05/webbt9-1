@@ -9,10 +9,11 @@ FROM tomcat:11.0.10-jdk17-temurin
 WORKDIR /usr/local/tomcat
 RUN rm -rf webapps/*
 
-# Copy WAR với tên mặc định (artifactId-version.war)
-COPY --from=build /app/target/ch09_ex1_download-1.0-SNAPSHOT.war ./webapps/ch09_ex1_download.war
+# Copy WAR và deploy dưới ROOT context
+COPY --from=build /app/target/ch09_ex1_download-1.0-SNAPSHOT.war ./webapps/ROOT.war
 
 EXPOSE 8080
 CMD ["catalina.sh", "run"]
+
 
 
