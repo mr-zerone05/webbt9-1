@@ -1,32 +1,21 @@
-# ============================
-# Bước 1: Build bằng Maven
-# ============================
-FROM maven:3.9.9-eclipse-temurin-17 AS build
+# Stage 1: Build WAR bằng Maven
+FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
 COPY . .
 RUN mvn clean package -DskipTests
 
-# ============================
-# Bước 2: Deploy lên Tomcat
-# ============================
-FROM tomcat:11.0.10-jdk17-temurin
-WORKDIR /usr/local/tomcat
+# Stage 2: Chạy với Tomcat
+FROM tomcat:10.1-jdk17
 
 # Xóa webapp mặc định
-RUN rm -rf ./webapps/*
+RUN rm -rf /usr/local/tomcat/webapps/*
 
-# Copy WAR đã build sang ROOT.war
-COPY --from=build /app/target/ROOT.war ./webapps/ROOT.war
+# Copy WAR từ stage build vào Tomcat (ROOT.war)
+COPY --from=build /app/target/ROOT.war /usr/local/tomcat/webapps/ROOT.war
 
-# Render cấp cổng qua biến $PORT
-ENV PORT=8080
-EXPOSE ${PORT}
+EXPOSE 8080
+CMD ["catalina.sh", "run"]
 
-# Cài gettext để thay thế biến $PORT trong server.xml
-RUN apt-get update && apt-get install -y gettext-base \
-    && mv conf/server.xml conf/server.xml.template
-
-CMD envsubst < conf/server.xml.template > conf/server.xml && catalina.sh run
 
 
 
