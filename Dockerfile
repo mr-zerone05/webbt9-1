@@ -12,21 +12,21 @@ RUN mvn clean package -DskipTests
 FROM tomcat:11.0.10-jdk17-temurin
 WORKDIR /usr/local/tomcat
 
-# Xóa ứng dụng mặc định
+# Xóa webapp mặc định
 RUN rm -rf ./webapps/*
 
-# Copy WAR đã build sang Tomcat
-COPY --from=build /app/target/ch09_ex1_download.war ./webapps/ROOT.war
+# Copy WAR đã build sang ROOT.war
+COPY --from=build /app/target/ROOT.war ./webapps/ROOT.war
 
-# Render sẽ gán biến $PORT (ngẫu nhiên), Tomcat cần nghe trên port đó
+# Render cấp cổng qua biến $PORT
 ENV PORT=8080
 EXPOSE ${PORT}
 
-# Sửa file cấu hình server.xml để Tomcat dùng $PORT thay vì mặc định 8080
-RUN sed -i 's/port="8080"/port="${PORT}"/' conf/server.xml
+# Cài gettext để thay thế biến $PORT trong server.xml
+RUN apt-get update && apt-get install -y gettext-base \
+    && mv conf/server.xml conf/server.xml.template
 
-# Chạy Tomcat
-CMD ["catalina.sh", "run"]
+CMD envsubst < conf/server.xml.template > conf/server.xml && catalina.sh run
 
 
 
